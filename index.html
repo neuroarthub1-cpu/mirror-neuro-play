@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Neuro Mirror Play</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      background: #0f172a;
+      color: white;
+      font-family: system-ui, sans-serif;
+      text-align: center;
+    }
+    video, canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #ui {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+    }
+    button {
+      font-size: 18px;
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: none;
+      background: #38bdf8;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Neuro Mirror Play</h2>
+
+<video id="video" autoplay playsinline width="640" height="480"></video>
+<canvas id="canvas" width="640" height="480"></canvas>
+
+<div id="ui">
+  <button onclick="mode='calm'">Calm</button>
+  <button onclick="mode='express'">Express</button>
+  <button onclick="mode='explore'">Explore</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script src="script.js"></script>
+
+</body>
+</html>
