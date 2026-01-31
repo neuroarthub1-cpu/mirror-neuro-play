@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Neuro Mirror Debug</title>
+  <title>Neuro Mirror Working</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
@@ -18,21 +18,20 @@
       top: 0;
       left: 0;
     }
+    #video {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      width: 200px;
+      border: 2px solid white;
+      z-index: 10;
+    }
     #info {
       position: fixed;
       bottom: 10px;
       left: 10px;
       color: white;
       font-size: 14px;
-      opacity: 0.9;
-    }
-    #video {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      width: 200px;
-      z-index: 10;
-      border: 2px solid white;
     }
   </style>
 </head>
@@ -43,14 +42,14 @@
 <canvas id="canvas"></canvas>
 
 <div id="info">
-  If you see your face above, camera works.<br>
-  Move hand / open mouth.
+  Open mouth = grow<br>
+  Move hand = move
 </div>
 
 <script type="module">
-  import { FaceMesh } from "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh";
-  import { Hands } from "https://cdn.jsdelivr.net/npm/@mediapipe/hands";
-  import { Camera } from "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils";
+  import { FaceMesh } from "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js";
+  import { Hands } from "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
+  import { Camera } from "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
 
   const video = document.getElementById("video");
   const canvas = document.getElementById("canvas");
@@ -66,8 +65,7 @@
   let mouth = 0;
   let handX = 0.5;
 
-  /* -------- FACE -------- */
-
+  /* ---------- FACE ---------- */
   const faceMesh = new FaceMesh({
     locateFile: file =>
       `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -81,11 +79,10 @@
   faceMesh.onResults(r => {
     if (!r.multiFaceLandmarks) return;
     const l = r.multiFaceLandmarks[0];
-    mouth = Math.abs(l[13].y - l[14].y) * 10;
+    mouth = Math.abs(l[13].y - l[14].y) * 12;
   });
 
-  /* -------- HAND -------- */
-
+  /* ---------- HAND ---------- */
   const hands = new Hands({
     locateFile: file =>
       `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -98,8 +95,7 @@
     handX = r.multiHandLandmarks[0][8].x;
   });
 
-  /* -------- CAMERA -------- */
-
+  /* ---------- CAMERA ---------- */
   const camera = new Camera(video, {
     onFrame: async () => {
       await faceMesh.send({ image: video });
@@ -111,18 +107,17 @@
 
   camera.start();
 
-  /* -------- DRAW -------- */
-
+  /* ---------- DRAW ---------- */
   function draw() {
     requestAnimationFrame(draw);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const size = 100 + mouth * 200;
+    const size = 80 + mouth * 20;
     const x = canvas.width * handX;
     const y = canvas.height / 2;
 
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "red";
     ctx.beginPath();
     ctx.arc(x, y, size, 0, Math.PI * 2);
     ctx.fill();
@@ -133,3 +128,4 @@
 
 </body>
 </html>
+
