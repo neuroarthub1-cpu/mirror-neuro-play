@@ -5,12 +5,6 @@
   <title>Embodied Neuro-Art Feedback</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- ✅ CORRECTED MEDIAPIPE IMPORTS (NO .js) -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands"></script>
-
   <style>
     html, body {
       margin: 0;
@@ -19,8 +13,8 @@
       overflow: hidden;
       font-family: sans-serif;
     }
-    #canvas {
-      position: absolute;
+    canvas {
+      position: fixed;
       top: 0;
       left: 0;
     }
@@ -37,123 +31,100 @@
 
 <body>
 
-<video id="video" autoplay playsinline style="display:none"></video>
+<video id="video" playsinline style="display:none"></video>
 <canvas id="canvas"></canvas>
 
 <div id="info">
-  Move your hand slowly.<br>
-  Soften your face.<br>
-  Observe the response.
+  Move your hand.<br>
+  Soften your face.
 </div>
 
-<script>
-/* ================= BASIC SETUP ================= */
+<script type="module">
+  import { FaceMesh } from "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh";
+  import { Hands } from "https://cdn.jsdelivr.net/npm/@mediapipe/hands";
+  import { Camera } from "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils";
 
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
-resize();
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resize);
+  resize();
 
-/* ================= STATE ================= */
+  let mouth = 0;
+  let handX = 0.5;
+  let smoothMouth = 0;
+  let smoothHand = 0;
 
-let mouthOpen = 0;
-let handX = 0.5;
+  const faceMesh = new FaceMesh({
+    locateFile: file =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+  });
 
-let smoothMouth = 0;
-let smoothHand = 0;
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true
+  });
 
-/* ================= FACEMESH ================= */
+  faceMesh.onResults(r => {
+    if (!r.multiFaceLandmarks) return;
+    const l = r.multiFaceLandmarks[0];
+    mouth = Math.abs(l[13].y - l[14].y) * 10;
+  });
 
-const faceMesh = new FaceMesh({
-  locateFile: file =>
-    `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-});
+  const hands = new Hands({
+    locateFile: file =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  });
 
-faceMesh.setOptions({
-  maxNumFaces: 1,
-  refineLandmarks: true,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5
-});
+  hands.setOptions({ maxNumHands: 1 });
 
-faceMesh.onResults(results => {
-  if (!results.multiFaceLandmarks) return;
+  hands.onResults(r => {
+    if (!r.multiHandLandmarks) return;
+    handX = r.multiHandLandmarks[0][8].x;
+  });
 
-  const landmarks = results.multiFaceLandmarks[0];
-  const upperLip = landmarks[13];
-  const lowerLip = landmarks[14];
+  const camera = new Camera(video, {
+    onFrame: async () => {
+      await faceMesh.send({ image: video });
+      await hands.send({ image: video });
+    },
+    width: 640,
+    height: 480
+  });
 
-  mouthOpen = Math.abs(upperLip.y - lowerLip.y) * 10;
-});
+  camera.start();
 
-/* ================= HANDS ================= */
+  function draw() {
+    requestAnimationFrame(draw);
 
-const hands = new Hands({
-  locateFile: file =>
-    `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
+    smoothMouth += (mouth - smoothMouth) * 0.05;
+    smoothHand += (handX - smoothHand) * 0.05;
 
-hands.setOptions({
-  maxNumHands: 1,
-  minDetectionConfidence: 0.6,
-  minTrackingConfidence: 0.6
-});
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-hands.onResults(results => {
-  if (!results.multiHandLandmarks) return;
+    const hue = Math.min(360, smoothMouth * 120);
+    const size = 120 + smoothMouth * 220;
+    const rot = smoothHand * Math.PI * 2;
 
-  const indexTip = results.multiHandLandmarks[0][8];
-  handX = indexTip.x;
-});
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(rot);
 
-/* ================= CAMERA ================= */
+    ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+    ctx.beginPath();
+    ctx.arc(0, 0, size, 0, Math.PI * 2);
+    ctx.fill();
 
-const camera = new Camera(video, {
-  onFrame: async () => {
-    await faceMesh.send({ image: video });
-    await hands.send({ image: video });
-  },
-  width: 640,
-  height: 480
-});
+    ctx.restore();
+  }
 
-camera.start();
-
-/* ================= RENDER LOOP ================= */
-
-function draw() {
-  requestAnimationFrame(draw);
-
-  smoothMouth += (mouthOpen - smoothMouth) * 0.05;
-  smoothHand += (handX - smoothHand) * 0.05;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const hue = Math.min(360, smoothMouth * 120);
-  const rotation = smoothHand * Math.PI * 2;
-  const size = 120 + smoothMouth * 250;
-
-  ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(rotation);
-
-  ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
-  ctx.beginPath();
-  ctx.arc(0, 0, size, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
-draw();
+  draw();
 </script>
 
 </body>
 </html>
-
